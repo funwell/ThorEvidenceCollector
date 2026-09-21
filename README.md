@@ -79,6 +79,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\package.ps1 -Version 20260
 
 `--demo` 生成的是合成证据，不能冒充真实车机采集结果。
 
+## macOS
+
+仓库同时提供 Python 版 macOS/Linux CLI 采集器，不需要运行 Windows EXE。参见 [`mac/README.md`](mac/README.md)。首次准备：
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r mac/requirements.txt
+python mac/thor_nvshell_collect.py --port /dev/cu.usbserial-XXXX
+```
+
 ## 导出结构
 
 每次采集会生成一个独立目录和 ZIP，主要包含：

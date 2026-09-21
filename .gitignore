@@ -21,3 +21,8 @@ logs/
 *.pdb
 Thumbs.db
 Desktop.ini
+
+# macOS/Python local test outputs
+.venv/
+__pycache__/
+mac/test-output/
