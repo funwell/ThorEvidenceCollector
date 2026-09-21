@@ -1,0 +1,23 @@
+# Build and distribution outputs
+dist/
+bin/
+obj/
+*.exe
+*.zip
+
+# Runtime evidence and logs
+Evidence/
+logs/
+*.log
+*.bin
+*.tmp
+*.dmp
+
+# Local IDE and OS files
+.vs/
+.vscode/
+*.user
+*.suo
+*.pdb
+Thumbs.db
+Desktop.ini
