@@ -33,6 +33,9 @@ namespace ThorEvidenceCollector
         private ListBox _timeline;
         private Timer _timer;
         private SerialPort _serial;
+        private SerialPort _passiveSerial;
+        private PassiveSerialCapture _passiveCapture;
+        private PortInfo _passivePort;
         private DemoTransport _demoTransport;
         private CaptureSession _session;
         private DateTime _demoCloseDueUtc;
@@ -61,7 +64,7 @@ namespace ThorEvidenceCollector
             Controls.Add(top);
 
             Label safety = new Label();
-            safety.Text = "安全模式：本工具只监听并发送 5 条只读命令，不会 poweron/复位/刷写/CAN。";
+            safety.Text = "安全模式：本工具只监听并发送固定只读命令，不会 poweron/复位/刷写/CAN；A 通道仅被动监听。";
             safety.BackColor = Color.FromArgb(104, 35, 35);
             safety.ForeColor = Color.White;
             safety.Font = new Font("Microsoft YaHei", 11, FontStyle.Bold);
@@ -245,11 +248,18 @@ namespace ThorEvidenceCollector
                 int best = 0;
                 for (int i = 1; i < _ports.Ports.Count; i++) if (_ports.Ports[i].RecommendationScore > _ports.Ports[best].RecommendationScore) best = i;
                 _portCombo.SelectedIndex = best;
+                _passivePort = null;
+                for (int i = 0; i < _ports.Ports.Count; i++)
+                {
+                    PortInfo candidate = _ports.Ports[i];
+                    if (candidate == _ports.Ports[best]) continue;
+                    if (candidate.RecommendationScore >= 60 && (_passivePort == null || candidate.RecommendationScore > _passivePort.RecommendationScore)) _passivePort = candidate;
+                }
             }
             string diagnostic = _ports.Diagnostic;
             if (_ports.Ports.Count == 0) diagnostic = "未发现串口。请连接 CH342 后点击刷新；不会自动尝试未知端口。" + (String.IsNullOrEmpty(diagnostic) ? "" : " " + diagnostic);
             else if (!String.IsNullOrEmpty(diagnostic)) diagnostic = "已发现串口，但自动识别提示：" + diagnostic;
-            else diagnostic = "已发现 " + _ports.Ports.Count.ToString() + " 个串口；优先选择 CH342 B 通道。";
+            else diagnostic = "已发现 " + _ports.Ports.Count.ToString() + " 个串口；优先选择 CH342 B 通道。" + (_passivePort == null ? "" : " 将被动监听 " + _passivePort.PortName + "。\r\n");
             _diagnosticLabel.Text = diagnostic;
         }
 
@@ -275,6 +285,7 @@ namespace ThorEvidenceCollector
                     _session = new CaptureSession(SendToSerial, false);
                 }
                 SubscribeSession(_session);
+                _session.BeforeExport = delegate { ClosePassiveSerial(); };
                 string evidenceRoot = Path.Combine(_outputRoot, "Evidence");
                 string sessionDirectory = SessionPaths.CreateSessionDirectory(evidenceRoot, _demo ? "Demo" : "Capture");
                 int baud = Convert.ToInt32(_baudCombo.SelectedItem);
@@ -287,6 +298,7 @@ namespace ThorEvidenceCollector
                 else
                 {
                     OpenSerial(selected.PortName, baud);
+                    OpenPassiveSerial(_passivePort, baud);
                 }
 
                 _startButton.Enabled = false;
@@ -316,7 +328,36 @@ namespace ThorEvidenceCollector
             _serial.ReadBufferSize = 65536;
             _serial.Open();
             _session.AddEvent("OPEN " + portName + " @ " + baud + " 8N1, DTR=OFF, RTS=OFF, flow-control=none");
-            _diagnosticLabel.Text = "串口已打开。程序正在被动等待设备上电，不会发送 poweron。";
+            _diagnosticLabel.Text = "MCU 串口已打开；程序正在被动等待设备上电，不会发送 poweron。";
+        }
+
+        private void OpenPassiveSerial(PortInfo port, int baud)
+        {
+            if (port == null || String.Equals(port.PortName, _serial == null ? "" : _serial.PortName, StringComparison.OrdinalIgnoreCase))
+            {
+                _session.AddWarning("未找到 CH342 A 被动串口；本次只采集 MCU 通道。");
+                return;
+            }
+
+            try
+            {
+                _passiveCapture = new PassiveSerialCapture();
+                _passiveCapture.Start(_session.SessionDirectory, port.PortName, port.Caption, baud);
+                _passiveSerial = new SerialPort(port.PortName, baud, Parity.None, 8, StopBits.One);
+                _passiveSerial.Handshake = Handshake.None;
+                _passiveSerial.DtrEnable = false;
+                _passiveSerial.RtsEnable = false;
+                _passiveSerial.ReadTimeout = 50;
+                _passiveSerial.ReadBufferSize = 65536;
+                _passiveSerial.Open();
+                _session.AddEvent("PASSIVE OPEN " + port.PortName + " @ " + baud + " 8N1, RX-only, DTR=OFF, RTS=OFF");
+                _diagnosticLabel.Text = "MCU " + _serial.PortName + " 主通道 + " + port.PortName + " 被动监听已打开。";
+            }
+            catch (Exception ex)
+            {
+                _session.AddWarning("COM5/A 被动监听失败：" + ex.Message);
+                ClosePassiveSerial();
+            }
         }
 
         private bool SendToSerial(byte[] bytes)
@@ -357,6 +398,23 @@ namespace ThorEvidenceCollector
                             bytes = exact;
                         }
                         _session.ProcessReceived(bytes);
+                    }
+                }
+                if (!_demo && _passiveSerial != null && _passiveSerial.IsOpen && _passiveCapture != null)
+                {
+                    while (_passiveSerial.BytesToRead > 0)
+                    {
+                        int count = Math.Min(_passiveSerial.BytesToRead, 8192);
+                        byte[] bytes = new byte[count];
+                        int read = _passiveSerial.Read(bytes, 0, count);
+                        if (read <= 0) break;
+                        if (read != bytes.Length)
+                        {
+                            byte[] exact = new byte[read];
+                            Buffer.BlockCopy(bytes, 0, exact, 0, read);
+                            bytes = exact;
+                        }
+                        _passiveCapture.ProcessReceived(bytes);
                     }
                 }
                 _session.Tick();
@@ -408,10 +466,27 @@ namespace ThorEvidenceCollector
 
         private void CloseSerial()
         {
+            ClosePassiveSerial();
             if (_serial == null) return;
             try { if (_serial.IsOpen) _serial.Close(); } catch { }
             try { _serial.Dispose(); } catch { }
             _serial = null;
+        }
+
+        private void ClosePassiveSerial()
+        {
+            if (_passiveSerial != null)
+            {
+                try { if (_passiveSerial.IsOpen) _passiveSerial.Close(); } catch { }
+                try { _passiveSerial.Dispose(); } catch { }
+                _passiveSerial = null;
+            }
+            if (_passiveCapture != null)
+            {
+                try { _passiveCapture.Stop(); } catch { }
+                try { _passiveCapture.Dispose(); } catch { }
+                _passiveCapture = null;
+            }
         }
 
         private void SubscribeSession(CaptureSession session)

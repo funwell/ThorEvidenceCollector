@@ -7,7 +7,7 @@
 ## 设计目标
 
 - 双击即可使用的 WinForms 采集器，目标是 Windows 10/11。
-- 自动识别 CH342 双串口并优先标记 `USB-Enhanced-SERIAL-B`。
+- 自动识别 CH342 双串口并优先标记 `USB-Enhanced-SERIAL-B`；如果发现 A 通道，会同时以 RX-only 方式监听。
 - 先录制原始 RX，再等待设备上电。
 - 自动采集完整启动日志，并保存原始字节流。
 - 只发送固定的只读状态命令，不提供自由命令输入。
@@ -52,7 +52,7 @@ README.txt
 操作步骤：
 
 1. 连接 C2C 调试线，等待 Windows 识别 CH342 串口。
-2. 双击 `ThorEvidenceCollector.exe`，选择带有 `USB-Enhanced-SERIAL-B` 或 `[推荐 B 通道]` 的端口。
+2. 双击 `ThorEvidenceCollector.exe`，选择带有 `USB-Enhanced-SERIAL-B` 或 `[推荐 B 通道]` 的端口；A 通道会自动作为被动监听口打开。
 3. 点击“开始采集”，再给设备上电；完成后把生成的 `ThorEvidence-*.zip` 发给分析人员。
 
 如果现有的串口监控程序占用同一个 COM 口，先关闭它。`.cmd` 只是备用启动器，不需要和 EXE 同时运行。

@@ -138,6 +138,15 @@ namespace ThorEvidence.Core
             builder.AppendLine("  showvoltages");
             builder.AppendLine("  pmstateget");
             builder.AppendLine("  readtemp");
+            builder.AppendLine("  pmrunstate");
+            builder.AppendLine("  pncstatus");
+            builder.AppendLine("  socstatus");
+            builder.AppendLine("  readvolt");
+            builder.AppendLine("  readvrs12");
+            builder.AppendLine("  swtlinkstatus");
+            builder.AppendLine("  swtSqiValue");
+            builder.AppendLine("  swtCrcCount");
+            builder.AppendLine("  swtstatusdata");
             builder.AppendLine("- It never transmits poweron, poweroff, reset, recovery, flashing, CAN, or unknown commands.");
             builder.AppendLine("- DTR and RTS are disabled; no break or automatic port switching is performed.");
             builder.AppendLine();

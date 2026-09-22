@@ -251,6 +251,29 @@ internal static class CollectorCoreTests
         }
     }
 
+    private static void TestPassiveSerialCaptureNeverTransmits()
+    {
+        string directory = TempDirectory("ThorEvidencePassive");
+        PassiveSerialCapture passive = new PassiveSerialCapture();
+        try
+        {
+            passive.Start(directory, "COM5", "USB-Enhanced-SERIAL-A CH342", 115200);
+            passive.ProcessReceived(Encoding.ASCII.GetBytes("Linux version synthetic\r\n"));
+            passive.Stop();
+            AssertTrue(File.Exists(Path.Combine(directory, "serial-A-rx.bin")), "passive raw file");
+            AssertTrue(File.Exists(Path.Combine(directory, "serial-A-transcript.log")), "passive transcript");
+            AssertTrue(File.Exists(Path.Combine(directory, "serial-A-summary.json")), "passive summary");
+            string transcript = File.ReadAllText(Path.Combine(directory, "serial-A-transcript.log"), Encoding.UTF8);
+            AssertTrue(transcript.IndexOf("[TX]", StringComparison.OrdinalIgnoreCase) < 0, "passive transcript has no TX");
+            AssertTrue(passive.RawBytes == 25, "passive raw bytes");
+        }
+        finally
+        {
+            passive.Dispose();
+            try { Directory.Delete(directory, true); } catch { }
+        }
+    }
+
     public static int Main()
     {
         TestReadOnlyPolicy();
@@ -261,6 +284,7 @@ internal static class CollectorCoreTests
         TestLargeReplayChunkDoesNotOverflowDecoder();
         TestEmptyInputUnsupportedOutputAndPortErrors();
         TestHashManifest();
+        TestPassiveSerialCaptureNeverTransmits();
         Console.WriteLine(failures == 0 ? "ALL TESTS PASSED" : failures + " TEST(S) FAILED");
         return failures == 0 ? 0 : 1;
     }

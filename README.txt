@@ -1,7 +1,7 @@
 ThorEvidenceCollector
 ====================
 
-这是给群友使用的 Thor NvShell 证据采集器。双击 ThorEvidenceCollector.exe，选择明确的串口并点击“开始采集”。程序会先开始保存原始 RX，再等待设备上电；它不会自动发送 poweron。
+这是给群友使用的 Thor NvShell 证据采集器。双击 ThorEvidenceCollector.exe，选择明确的 B 通道并点击“开始采集”。程序会同时尝试打开 A 通道做完全被动监听；它会先开始保存原始 RX，再等待设备上电，不会自动发送 poweron。
 
 安全边界
 --------
@@ -34,4 +34,4 @@ swtstatusdata
 --replay <file> 在不打开串口的情况下解析已有日志，并标记为 synthetic replay。
 --demo 打开 GUI，注入合成分片启动流并自动导出；DEMO 不能当作真实车机证据。
 
-真实硬件使用时，请群友只选择自己确认的 CH342 B 通道，保留完整 ZIP，不要把合成 DEMO 或 replay 文件当作物理串口采集。
+真实硬件使用时，请群友选择自己确认的 CH342 B 通道；A 通道由程序自动打开并只读监听。保留完整 ZIP，不要把合成 DEMO 或 replay 文件当作物理串口采集。

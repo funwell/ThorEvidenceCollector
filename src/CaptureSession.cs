@@ -63,6 +63,7 @@ namespace ThorEvidence.Core
         public event Action<CaptureState> StateChanged;
         public event Action<EvidenceSnapshot> SnapshotChanged;
         public event Action<string> Exported;
+        public Action BeforeExport { get; set; }
 
         public EvidenceParser Parser { get { return _parser; } }
         public CaptureState State { get; private set; }
@@ -417,6 +418,14 @@ namespace ThorEvidence.Core
         private void FinalizeAndExport(bool partial)
         {
             if (_exported) return;
+            try
+            {
+                if (BeforeExport != null) BeforeExport();
+            }
+            catch (Exception ex)
+            {
+                AddWarning("before-export callback failed: " + ex.Message);
+            }
             _active = false;
             try
             {

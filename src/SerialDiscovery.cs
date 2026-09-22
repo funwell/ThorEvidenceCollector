@@ -11,11 +11,12 @@ namespace ThorEvidence.Core
         public string PortName;
         public string Caption;
         public bool Recommended;
+        public string Recommendation;
         public int RecommendationScore;
 
         public string DisplayName
         {
-            get { return PortName + " - " + Caption + (Recommended ? " [推荐 B 通道]" : ""); }
+            get { return PortName + " - " + Caption + (String.IsNullOrEmpty(Recommendation) ? "" : " [" + Recommendation + "]"); }
         }
 
         public override string ToString()
@@ -112,8 +113,16 @@ namespace ThorEvidence.Core
             int score = 0;
             if (normalized.IndexOf("USB-ENHANCED-SERIAL-B", StringComparison.Ordinal) >= 0) score = 100;
             else if (normalized.IndexOf("CH342", StringComparison.Ordinal) >= 0 && normalized.IndexOf("B", StringComparison.Ordinal) >= 0) score = 90;
-            else if (normalized.IndexOf("USB-ENHANCED-SERIAL-B", StringComparison.Ordinal) >= 0) score = 80;
-            return new PortInfo { PortName = port.ToUpperInvariant(), Caption = caption, RecommendationScore = score, Recommended = score > 0 };
+            else if (normalized.IndexOf("USB-ENHANCED-SERIAL-A", StringComparison.Ordinal) >= 0) score = 70;
+            else if (normalized.IndexOf("CH342", StringComparison.Ordinal) >= 0 && normalized.IndexOf("A", StringComparison.Ordinal) >= 0) score = 60;
+            return new PortInfo
+            {
+                PortName = port.ToUpperInvariant(),
+                Caption = caption,
+                RecommendationScore = score,
+                Recommended = score >= 90,
+                Recommendation = score >= 90 ? "推荐 B 通道" : (score >= 60 ? "被动 A 监听" : "")
+            };
         }
 
         private static string ExtractPort(string value)

@@ -26,7 +26,7 @@ The collector must capture evidence for `mcu_version`, `help`, `showvoltages`, `
 
 ## 3. Serial Discovery
 
-Use WMI/System.Management (`Win32_PnPEntity` and `Win32_SerialPort`) to enumerate COM ports and captions. Prefer, in order:
+Use WMI/System.Management (`Win32_PnPEntity` and `Win32_SerialPort`) to enumerate COM ports and captions. The selected B channel is the active MCU/NvShell port; a distinct A channel is opened separately as an RX-only passive port. Prefer, in order:
 
 1. A port whose caption contains `USB-Enhanced-SERIAL-B` or `CH342` and `B`.
 2. A port whose caption contains `USB-Enhanced-SERIAL-B`.
@@ -34,7 +34,7 @@ Use WMI/System.Management (`Win32_PnPEntity` and `Win32_SerialPort`) to enumerat
 
 Show every discovered port as `COMx - sanitized caption`; never hide ports. If WMI is unavailable, fall back to `SerialPort.GetPortNames()` and explain that automatic B-channel identification is unavailable.
 
-Open exactly one port per session. Set `DtrEnable=false`, `RtsEnable=false`, `Handshake=None`, and a short read timeout. Do not close an existing user process or kill another monitor.
+Open the active B port and, when available, one distinct A port. Set `DtrEnable=false`, `RtsEnable=false`, `Handshake=None`, and a short read timeout on both. The A port must never receive CRLF, commands, break, or any write. Do not close an existing user process or kill another monitor.
 
 ## 4. Capture State Machine
 
@@ -119,6 +119,7 @@ Warnings should be generated, not asserted as root-cause claims. Examples:
 Every session must contain:
 
 - `raw-rx.bin`: exact received bytes.
+- `serial-A-rx.bin` and `serial-A-transcript.log`: optional passive A-channel evidence; no TX is ever sent to this port.
 - `serial-transcript.log`: timestamped RX/TX transcript; TX lines identify only safe CRLF and allowlisted commands.
 - `summary.json`: schema version, timestamps, port/baud, capture flags, normalized fields, events, warnings, command status, and file hashes.
 - `summary.txt`: concise Chinese/English-readable report for a forum post.

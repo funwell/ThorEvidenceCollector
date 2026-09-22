@@ -20,6 +20,7 @@ $coreSources = @(
     (Join-Path $src 'CaptureSession.cs'),
     (Join-Path $src 'EvidenceExporter.cs'),
     (Join-Path $src 'SerialDiscovery.cs'),
+    (Join-Path $src 'PassiveSerialCapture.cs'),
     (Join-Path $src 'DemoTransport.cs'),
     (Join-Path $src 'Replay.cs'),
     (Join-Path $src 'SelfTestRunner.cs')
